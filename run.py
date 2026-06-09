@@ -13,8 +13,13 @@ def main():
     parser.add_argument("--port", type=int, default=8040, help="Port number")
     parser.add_argument("--backend", choices=["cuda", "cpu"], default="cuda", help="Backend target")
     parser.add_argument("--skip-gpu-check", action="store_true", help="Skip NVIDIA GPU check")
+    parser.add_argument("--threads", type=int, default=None, help="Force specific number of CPU threads")
+    parser.add_argument("legacy_backend", nargs="?", choices=["cuda", "cpu"], help=argparse.SUPPRESS)
     
     args = parser.parse_args()
+    
+    if args.legacy_backend:
+        args.backend = args.legacy_backend
     
     # Check GPU if cuda requested
     if args.backend == "cuda" and not args.skip_gpu_check:
@@ -27,6 +32,31 @@ def main():
                 log.info("CUDA is available! Using GPU for inference: %s", torch.cuda.get_device_name(0))
         except ImportError:
             log.warning("PyTorch not installed yet or import failed.")
+
+    # Configure CPU threads if using CPU backend
+    if args.backend == "cpu":
+        try:
+            import psutil
+            physical_cores = psutil.cpu_count(logical=False) or 1
+        except Exception:
+            physical_cores = 4
+        
+        threads = args.threads if args.threads is not None else max(1, min(physical_cores, 8))
+        log.info("Configuring CPU backend with %d threads (detected physical cores: %d)", threads, physical_cores)
+        
+        os.environ["OMP_NUM_THREADS"] = str(threads)
+        os.environ["MKL_NUM_THREADS"] = str(threads)
+        os.environ["OPENBLAS_NUM_THREADS"] = str(threads)
+        os.environ["VECLIB_MAXIMUM_THREADS"] = str(threads)
+        os.environ["NUMEXPR_NUM_THREADS"] = str(threads)
+        
+        try:
+            import torch
+            torch.set_num_threads(threads)
+            torch.set_num_interop_threads(1)
+            log.info("Enforced PyTorch thread limits: intra_op=%d, inter_op=1", threads)
+        except Exception as torch_err:
+            log.warning("Could not enforce PyTorch thread limits: %s", torch_err)
 
     os.environ["CHATTERBOX_DEVICE"] = args.backend
 

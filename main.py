@@ -279,6 +279,11 @@ async def generate_speech(request: SpeechRequest):
         sig = inspect.signature(model.generate)
         params = sig.parameters
 
+        # Clamp repetition penalty to at least 1.0 to prevent token looping and noise degradation
+        penalty = request.repetition_penalty
+        if penalty is not None:
+            penalty = max(1.0, penalty)
+
         kwargs = {}
         param_mapping = {
             "text": request.input,
@@ -286,7 +291,7 @@ async def generate_speech(request: SpeechRequest):
             "temperature": request.temperature,
             "exaggeration": request.exaggeration,
             "cfg_weight": request.cfg_weight,
-            "repetition_penalty": request.repetition_penalty,
+            "repetition_penalty": penalty,
             "min_p": request.min_p,
             "top_p": request.top_p,
             "top_k": request.top_k,
@@ -309,10 +314,13 @@ async def generate_speech(request: SpeechRequest):
         if wav.ndim == 1:
             wav = wav.unsqueeze(0)
 
-        # Save to buffer
+        # Save to buffer using soundfile to bypass torchaudio torchcodec dependency on Windows
+        import soundfile as sf
         sr = getattr(model, "sr", 24000)
         buffer = io.BytesIO()
-        torchaudio.save(buffer, wav.cpu(), sr, format="wav")
+        # soundfile expects 1D or 2D array [time, channels]
+        wav_numpy = wav.squeeze(0).cpu().numpy()
+        sf.write(buffer, wav_numpy, sr, format="wav")
         buffer.seek(0)
 
         # Apply speed adjustment if needed

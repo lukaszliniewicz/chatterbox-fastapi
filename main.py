@@ -264,8 +264,9 @@ async def generate_speech(request: SpeechRequest):
         else:
             logger.warning("Voice '%s' not found, defaulting to standard synthesis.", request.voice)
 
-    # Use CUDA if available
-    device = "cuda" if torch.cuda.is_available() else "cpu"
+    # Use CPU if requested via CHATTERBOX_DEVICE, otherwise use CUDA if available
+    backend = os.environ.get("CHATTERBOX_DEVICE", "cuda").lower()
+    device = "cpu" if backend == "cpu" else ("cuda" if torch.cuda.is_available() else "cpu")
     model = model_loader.get_model(request.model, device=device)
 
     try:

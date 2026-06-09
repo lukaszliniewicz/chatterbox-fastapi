@@ -22,10 +22,13 @@ def main():
             import torch
             if not torch.cuda.is_available():
                 log.error("CUDA is not available in PyTorch, but backend is set to cuda. Fallback to CPU.")
+                args.backend = "cpu"
             else:
                 log.info("CUDA is available! Using GPU for inference: %s", torch.cuda.get_device_name(0))
         except ImportError:
             log.warning("PyTorch not installed yet or import failed.")
+
+    os.environ["CHATTERBOX_DEVICE"] = args.backend
 
     # Configure model caching directory
     # Align with Pandrator portable model cache directory structure

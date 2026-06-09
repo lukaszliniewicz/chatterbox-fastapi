@@ -8,6 +8,8 @@ for %%I in ("%PARENT_DIR%") do set "PARENT_DIR=%%~fI"
 set "PIXI_EXE=%PARENT_DIR%\bin\pixi.exe"
 set "CUSTOM_PIXI=0"
 
+set "PASS_ARGS="
+
 :parse_args
 if "%~1"=="" goto args_done
 
@@ -28,8 +30,12 @@ if /I "!ARG1:~0,12!"=="--pixi-path=" (
     set "PIXI_VALUE=!ARG1:~12!"
     for %%I in ("!PIXI_VALUE!") do set "PIXI_EXE=%%~fI"
     set "CUSTOM_PIXI=1"
+    shift
+    goto parse_args
 )
 
+:: Forward other args
+set "PASS_ARGS=!PASS_ARGS! %1"
 shift
 goto parse_args
 
@@ -143,5 +149,5 @@ if !ERRORLEVEL! neq 0 (
 
 :: Start server with passed parameters
 echo Starting Chatterbox API Server...
-"%PIXI_EXE%" run python run.py %*
+"%PIXI_EXE%" run python run.py !PASS_ARGS!
 pause

@@ -1,6 +1,8 @@
 [project]
 name = "chatterbox-fastapi"
 version = "0.1.0"
+description = "FastAPI server wrapper for Resemble AI's Chatterbox TTS engine, developed for the Pandrator application"
+keywords = ["tts", "chatterbox", "fastapi", "voice-cloning", "pandrator"]
 requires-python = ">=3.11"
 dependencies = []
 

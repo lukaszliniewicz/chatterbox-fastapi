@@ -1,0 +1,37 @@
+[project]
+name = "chatterbox-fastapi"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = []
+
+[tool.pixi.workspace]
+channels = ["conda-forge"]
+platforms = ["win-64"]
+requires-pixi = ">=0.68.0"
+
+[tool.pixi.dependencies]
+python = "3.11.*"
+pip = "*"
+ffmpeg = "*"
+
+[tool.pixi.pypi-dependencies]
+fastapi = ">=0.115.0"
+uvicorn = { version = ">=0.34.0", extras = ["standard"] }
+pydantic = ">=2.0.0"
+python-multipart = ">=0.0.9"
+soundfile = ">=0.12.0"
+numpy = ">=1.24.0,<2.0.0"
+librosa = "==0.11.0"
+s3tokenizer = "*"
+resemble-perth = "*"
+conformer = "*"
+safetensors = "*"
+gradio = "*"
+transformers = "*"
+diffusers = "*"
+pydub = "*"
+requests = "*"
+omegaconf = "*"
+pykakasi = "==2.3.0"
+pyloudnorm = "*"
+spacy-pkuseg = "*"

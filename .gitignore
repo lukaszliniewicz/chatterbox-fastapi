@@ -1,0 +1,9 @@
+.pixi/
+chatterbox_src/
+__pycache__/
+*.wav
+*.log
+voices/
+.tmp/
+.pip-cache/
+.pixi-cache/

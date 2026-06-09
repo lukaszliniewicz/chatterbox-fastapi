@@ -7,8 +7,8 @@ for %%I in ("%PARENT_DIR%") do set "PARENT_DIR=%%~fI"
 
 set "PIXI_EXE=%PARENT_DIR%\bin\pixi.exe"
 set "CUSTOM_PIXI=0"
-
 set "PASS_ARGS="
+set "BACKEND_MODE=cuda"
 
 :parse_args
 if "%~1"=="" goto args_done
@@ -30,6 +30,44 @@ if /I "!ARG1:~0,12!"=="--pixi-path=" (
     set "PIXI_VALUE=!ARG1:~12!"
     for %%I in ("!PIXI_VALUE!") do set "PIXI_EXE=%%~fI"
     set "CUSTOM_PIXI=1"
+    shift
+    goto parse_args
+)
+
+if /I "%~1"=="--backend" (
+    if /I "%~2"=="cpu" set "BACKEND_MODE=cpu"
+    if /I "%~2"=="cuda" set "BACKEND_MODE=cuda"
+    shift
+    shift
+    goto parse_args
+)
+
+if /I "%~1"=="--backend=cpu" (
+    set "BACKEND_MODE=cpu"
+    shift
+    goto parse_args
+)
+
+if /I "%~1"=="--backend=cuda" (
+    set "BACKEND_MODE=cuda"
+    shift
+    goto parse_args
+)
+
+if /I "%~1"=="cpu" (
+    set "BACKEND_MODE=cpu"
+    shift
+    goto parse_args
+)
+
+if /I "%~1"=="cuda" (
+    set "BACKEND_MODE=cuda"
+    shift
+    goto parse_args
+)
+
+if /I "%~1"=="gpu" (
+    set "BACKEND_MODE=cuda"
     shift
     goto parse_args
 )
@@ -82,16 +120,8 @@ if not exist "%PROJECT_DIR%\.pixi\envs\default\python.exe" (
     )
 )
 
-:: Auto-detect target backend mode
-set "BACKEND_MODE=gpu"
-:: Check argument values (e.g. --backend cpu)
-for %%A in (%*) do (
-    if /I "%%A"=="--backend=cpu" set "BACKEND_MODE=cpu"
-    if /I "%%A"=="cpu" set "BACKEND_MODE=cpu"
-)
-
 :: Check if nvidia-smi exists for GPU detection
-if "%BACKEND_MODE%"=="gpu" (
+if "%BACKEND_MODE%"=="cuda" (
     where nvidia-smi >nul 2>nul
     if !ERRORLEVEL! neq 0 (
         echo nvidia-smi not detected. Defaulting to CPU mode.
@@ -101,7 +131,7 @@ if "%BACKEND_MODE%"=="gpu" (
 
 :: Verify PyTorch CUDA support in Pixi env
 set "NEED_TORCH_INSTALL=0"
-if "%BACKEND_MODE%"=="gpu" (
+if "%BACKEND_MODE%"=="cuda" (
     "%PIXI_EXE%" run python -c "import torch; exit(0 if torch.cuda.is_available() and '2.8.0' in torch.__version__ else 1)" >nul 2>nul
     if !ERRORLEVEL! neq 0 set "NEED_TORCH_INSTALL=1"
 ) else (
@@ -110,7 +140,7 @@ if "%BACKEND_MODE%"=="gpu" (
 )
 
 if "%NEED_TORCH_INSTALL%"=="1" (
-    if "%BACKEND_MODE%"=="gpu" (
+    if "%BACKEND_MODE%"=="cuda" (
         echo Installing PyTorch 2.8.0 CUDA 12.8 in Pixi env...
         "%PIXI_EXE%" run pip install --force-reinstall torch==2.8.0 torchaudio==2.8.0 --index-url https://download.pytorch.org/whl/cu128
     ) else (
@@ -138,7 +168,7 @@ if !ERRORLEVEL! neq 0 (
         )
     )
     echo Installing Chatterbox wrapper package...
-    cd /d "%PROJECT_DIR%\chatterbox_src"
+    cd /d "%PROJECT_DIR%\chraph_src" 2>nul || cd /d "%PROJECT_DIR%\chatterbox_src"
     "%PIXI_EXE%" run pip install --no-dependencies .
     if errorlevel 1 (
         echo Failed to install Chatterbox package.
@@ -149,5 +179,5 @@ if !ERRORLEVEL! neq 0 (
 
 :: Start server with passed parameters
 echo Starting Chatterbox API Server...
-"%PIXI_EXE%" run python run.py !PASS_ARGS!
+"%PIXI_EXE%" run python run.py --backend !BACKEND_MODE! !PASS_ARGS!
 pause

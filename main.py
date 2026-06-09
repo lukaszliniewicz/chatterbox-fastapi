@@ -133,6 +133,11 @@ class SpeechRequest(BaseModel):
     temperature: Optional[float] = 0.8
     exaggeration: Optional[float] = 0.5
     cfg_weight: Optional[float] = 0.5
+    repetition_penalty: Optional[float] = None
+    min_p: Optional[float] = None
+    top_p: Optional[float] = None
+    top_k: Optional[int] = None
+    norm_loudness: Optional[bool] = None
     response_format: Optional[str] = "wav"
 
 
@@ -270,18 +275,35 @@ async def generate_speech(request: SpeechRequest):
     model = model_loader.get_model(request.model, device=device)
 
     try:
+        import inspect
+        sig = inspect.signature(model.generate)
+        params = sig.parameters
+
         kwargs = {}
-        if "multilingual" in request.model.lower():
+        param_mapping = {
+            "text": request.input,
+            "audio_prompt_path": audio_prompt_path,
+            "temperature": request.temperature,
+            "exaggeration": request.exaggeration,
+            "cfg_weight": request.cfg_weight,
+            "repetition_penalty": request.repetition_penalty,
+            "min_p": request.min_p,
+            "top_p": request.top_p,
+            "top_k": request.top_k,
+            "norm_loudness": request.norm_loudness,
+        }
+
+        # Handle multilingual language parameter mismatch
+        if "language_id" in params:
             kwargs["language_id"] = request.language or "en"
 
-        wav = model.generate(
-            text=request.input,
-            audio_prompt_path=audio_prompt_path,
-            exaggeration=request.exaggeration or 0.5,
-            cfg_weight=request.cfg_weight or 0.5,
-            temperature=request.temperature or 0.8,
-            **kwargs
-        )
+        for name, value in param_mapping.items():
+            if name in params and value is not None:
+                kwargs[name] = value
+
+        logger.info("Calling model.generate with parameters: %s", {k: v for k, v in kwargs.items() if k != 'text'})
+
+        wav = model.generate(**kwargs)
 
         # Ensure shape is 2D
         if wav.ndim == 1:
